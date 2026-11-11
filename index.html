@@ -168,14 +168,15 @@ const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
 const wib=s=>s?new Date(s).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'long',timeStyle:'short'})+' WIB':'-';
 const dlong=s=>{try{return new Date(s+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}catch(e){return s}};
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);else if(d.startsWith('8'))d='62'+d;return d};
-let S={docs:[],seq:0,bank:{penjual:[],pembeli:[],kendaraan:[]},pref:{company:'AMSIAUTOS',alias:'AMSIAUTOS',legal:'',bid:'',code:'AMS',address:'',phone:'',email:'',rep:'',title:'Perwakilan',city:'',tag:'JUAL BELI KENDARAAN · DIGITAL',bank:'',perm:'',logo:''}},cur=null,step='pihak',pv='kw',UI={notes:{},other:{},acc:{},view:'depan'},saveT,tt;
+let S={docs:[],seq:0,bank:{penjual:[],pembeli:[],kendaraan:[]},pref:{company:'',alias:'',legal:'',bid:'',code:'AMS',address:'',phone:'',email:'',rep:'',title:'Perwakilan',city:'',tag:'JUAL BELI KENDARAAN · DIGITAL',bank:'',perm:'',logo:''}},cur=null,step='pihak',pv='kw',UI={notes:{},other:{},acc:{},view:'depan'},saveT,tt;
 
 /* ===== penyimpanan ===== */
 const DBN='amsi_kwbast';
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 async function load(){try{const db=await idb();return await new Promise((res,rej)=>{const q=db.transaction('kv').objectStore('kv').get('st');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}catch(e){try{return JSON.parse(localStorage.getItem(DBN)||'null')}catch(x){return null}}}
 async function put(){try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(S,'st');tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})}catch(e){try{localStorage.setItem(DBN,JSON.stringify(S))}catch(x){toast('Gagal menyimpan: penyimpanan penuh')}}}
-const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>{try{bankSync(cur,true)}catch(e){}put()},250)};
+const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>{try{bankSync(cur,true)}catch(e){}put();autoSync()},250)}
+let asT,asFail=0;function autoSync(){if(!S.pref.syncOk||!S.pref.syncUrl||!S.pref.syncToken||!S.pref.syncPass||S.pref.syncPass.length<6||!navigator.onLine)return;clearTimeout(asT);asT=setTimeout(async()=>{try{const pref=Object.assign({},S.pref);SYNCK.forEach(k=>delete pref[k]);await sync('save',{data:await enc(JSON.stringify({docs:S.docs,seq:S.seq,bank:S.bank,bankInit:S.bankInit,pref}),S.pref.syncPass)});asFail=0;const e=document.getElementById('cld');if(e)e.textContent='☁ tersinkron '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}catch(e){if(!asFail++)toast('Sinkron otomatis tertunda: '+e.message)}},8000)};
 window.addEventListener('beforeunload',()=>{put()});
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>{t.hidden=true},2800)}
 
@@ -685,9 +686,9 @@ const GSI='https://accounts.google.com/gsi/client',H2P='https://cdnjs.cloudflare
 function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('load'));document.head.appendChild(e)})}
 const fname=d=>(d.docs==='bast'?d.noB:d.noK).replace(/\//g,'-');
 async function makePdf(d){await loadScript(H2P);
- const host=document.createElement('div');host.style.cssText='position:fixed;left:-99999px;top:0;width:794px;background:#fff';
- host.innerHTML='<style>'+PAPERCSS+'.paper{min-width:0;max-width:794px;margin:0 auto}</style>'+await docsHtml(d);document.body.appendChild(host);
- try{return await html2pdf().set({margin:[10,10,10,10],image:{type:'jpeg',quality:.9},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'},pagebreak:{mode:['css','legacy'],avoid:['.sg','.ver','tr']}}).from(host).outputPdf('blob')}finally{host.remove()}}
+ const host=document.createElement('div');host.style.cssText='position:absolute;left:0;top:0;width:794px;background:#fff;z-index:-1;pointer-events:none';
+ host.innerHTML='<style>'+PAPERCSS+'.paper{min-width:0;max-width:794px;margin:0 auto}</style>'+await docsHtml(d);document.body.appendChild(host);window.scrollTo(0,0);await new Promise(r=>setTimeout(r,350));
+ try{return await html2pdf().set({margin:[10,10,10,10],image:{type:'jpeg',quality:.9},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,windowWidth:794,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{mode:['css','legacy'],avoid:['.sg','.ver','tr']}}).from(host).outputPdf('blob')}finally{host.remove()}}
 async function sharePdf(){toast('Membuat PDF…');
  try{const blob=await makePdf(cur),fn=fname(cur)+'.pdf',f=new File([blob],fn,{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:fn,text:await waText(cur)});return}catch(e){if(e&&e.name==='AbortError')return}}
@@ -700,12 +701,12 @@ async function enc(text,pw){if(!(window.crypto&&crypto.subtle))throw new Error('
 async function dec(txt,pw){let o;try{o=JSON.parse(txt)}catch(e){throw new Error('Data cloud tidak valid')}try{const key=await aesKey(pw,unb64(o.s),'decrypt');return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(o.i)},key,unb64(o.c)))}catch(e){throw new Error('Kata sandi enkripsi salah')}}
 async function sync(action,extra){const u=(S.pref.syncUrl||'').trim(),t=(S.pref.syncToken||'').trim();if(!u||!t)throw new Error('Isi URL dan Kode akses di Pengaturan (ikon ⚙)');
  const r=await fetch(u,{method:'POST',body:JSON.stringify(Object.assign({action,token:t},extra||{}))});let j;try{j=await r.json()}catch(e){throw new Error('Balasan server tidak dikenal; cek URL & akses "Anyone"')}if(!j.ok)throw new Error(j.error||'gagal');return j}
-const SYNCK=['syncUrl','syncToken','syncPass'];
+const SYNCK=['syncUrl','syncToken','syncPass','syncOk'];
 async function gSave(){const pw=S.pref.syncPass;if(!pw||pw.length<6)return toast('Isi Kata sandi enkripsi (min. 6 karakter) di Pengaturan');toast('Menyimpan ke cloud…');
- try{const pref=Object.assign({},S.pref);SYNCK.forEach(k=>delete pref[k]);const txt=await enc(JSON.stringify({docs:S.docs,seq:S.seq,pref}),pw);await sync('save',{data:txt});toast('Tersimpan di cloud ('+S.docs.length+' dokumen)')}catch(e){toast('Gagal: '+e.message)}}
+ try{const pref=Object.assign({},S.pref);SYNCK.forEach(k=>delete pref[k]);const txt=await enc(JSON.stringify({docs:S.docs,seq:S.seq,bank:S.bank,bankInit:S.bankInit,pref}),pw);await sync('save',{data:txt});S.pref.syncOk=1;put();toast('Tersimpan di cloud ('+S.docs.length+' dokumen)')}catch(e){toast('Gagal: '+e.message)}}
 async function gLoad(){const pw=S.pref.syncPass;if(!pw)return toast('Isi Kata sandi enkripsi di Pengaturan');toast('Mengambil dari cloud…');
  try{const j=await sync('load');if(!j.data)return toast('Belum ada data di cloud');const d=JSON.parse(await dec(j.data,pw));if(!Array.isArray(d.docs))throw new Error('data tidak valid');
-  ask('Data di perangkat ini akan diganti dengan data cloud ('+d.docs.length+' dokumen, '+wib(j.time)+'). Lanjutkan?',()=>{const keep={};SYNCK.forEach(k=>keep[k]=S.pref[k]);S=Object.assign({docs:[],seq:0},d,{pref:Object.assign({},d.pref||{},keep)});fixDocs();put();cur=null;render();toast('Data cloud dimuat')},'Ganti data')}catch(e){toast('Gagal: '+e.message)}}
+  ask('Data di perangkat ini akan diganti dengan data cloud ('+d.docs.length+' dokumen, '+wib(j.time)+'). Lanjutkan?',()=>{const keep={};SYNCK.forEach(k=>keep[k]=S.pref[k]);S=Object.assign({docs:[],seq:0},d,{pref:Object.assign({},d.pref||{},keep)});fixDocs();S.pref.syncOk=1;put();cur=null;render();toast('Data cloud dimuat')},'Ganti data')}catch(e){toast('Gagal: '+e.message)}}
 async function gPdf(){toast('Membuat PDF & mengunggah…');try{const b=await makePdf(cur),data=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=rej;fr.readAsDataURL(b)});const j=await sync('pdf',{name:fname(cur)+'.pdf',data});toast('PDF tersimpan di Google Drive (folder AMSIAUTOS)')}catch(e){toast('Gagal: '+e.message)}}
 
 /* ===== pengaturan ===== */

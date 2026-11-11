@@ -553,14 +553,15 @@ function bastHtml0(d,ch,cls){const T=d.type,j=T==='jual',pr=T==='perantara',bl=T
  '<h4 style="margin-top:20px">LAMPIRAN A — DAFTAR PERIKSA SERAH TERIMA</h4>'+GROUPS.map(g=>gHide(d,g)?'':'<table><tr><th colspan="3">'+g.t+'</th></tr>'+gI(d,g).map(it=>{const k=d.chk[g.k+'_'+it[0]]||{},lab=k.st?g.L[{a:0,b:1,c:2}[k.st]]:'';return '<tr><td style="width:44%">'+esc(it[1])+'</td><td style="width:16%">'+(lab?esc(lab):'<span class="blank">tidak diperiksa</span>')+'</td><td>'+esc(k.note||'')+(k.photo?'<br><img class="cph" src="'+k.photo+'" alt="">':'')+'</td></tr>'}).join('')+'</table>').join('')+
  dmgDoc(d)+
  (d.photos.length?'<div class="pho" style="margin-top:8px">'+d.photos.map(p=>'<div><img src="'+p.data+'" alt=""><div>'+esc(p.cap||'')+'</div></div>').join('')+'</div>':'')+kh+vd+verBox(d,ch)+'</div></div>'}
-async function docsHtml(d){const ch=await contentHash(d);let h='';if(d.docs!=='bast')h+=kwHtml(d,ch);if(d.docs!=='kw')h+=bastHtml(d,ch,d.docs==='both'?'pgb':'');return h}
+const outW=d=>d.docs==='both'?(pv==='kw'||pv==='bast'||pv==='both'?pv:'kw'):d.docs;
+async function docsHtml(d,w){const ch=await contentHash(d);w=w||'both';let h='';if(d.docs!=='bast'&&w!=='bast')h+=kwHtml(d,ch);if(d.docs!=='kw'&&w!=='kw')h+=bastHtml(d,ch,d.docs==='both'&&w==='both'?'pgb':'');return h}
 async function previewHtml(d){const ch=await contentHash(d),pr=problems(d),both=d.docs==='both';if(both&&pv!=='kw'&&pv!=='bast')pv='kw';if(d.docs==='kw')pv='kw';if(d.docs==='bast')pv='bast';
  const paper=pv==='kw'?kwHtml(d,ch):bastHtml(d,ch);
  return (both?'<div class="seg2"><button class="'+(pv==='kw'?'on':'')+'" data-pv="kw">Kwitansi</button><button class="'+(pv==='bast'?'on':'')+'" data-pv="bast">BAST</button></div>':'')+
  '<div class="note i" style="margin:0 0 12px">Baca preview ini bersama kedua pihak. Setelah setuju, centang persetujuan di bawah untuk lanjut ke tanda tangan.</div><div class="pw">'+paper+'</div>'+
  (pr.length?'<div class="note" style="margin-top:12px"><b>Data belum lengkap:</b> '+pr.map(esc).join(', ')+'. Lengkapi dulu agar bisa disetujui.</div>':'')+
  '<label class="agree" style="margin-top:14px"><input type="checkbox" id="agree" '+(d.agreed?'checked':'')+'> Para pihak telah membaca preview Kwitansi/BAST dan menyepakati seluruh isinya.</label>'+
- '<div class="row" style="margin-top:12px"><button class="btn wa" data-act="wa">Kirim preview via WhatsApp</button><button class="btn p" data-act="sharepdf">Bagikan PDF</button><button class="btn" data-act="print">Cetak</button></div>'}
+ '<div class="row" style="margin-top:12px"><button class="btn wa" data-act="wa">Kirim PDF via WhatsApp</button><button class="btn p" data-act="sharepdf">Bagikan PDF</button><button class="btn" data-act="print">Cetak</button></div>'}
 
 /* ===== tanda tangan ===== */
 async function sigState(d){const ch=await contentHash(d);const o={};roles(d).forEach(r=>{const s=d.sig[r.k];o[r.k]=s?(s.hash===ch?'ok':'bad'):'none'});return o}
@@ -568,7 +569,7 @@ function sTtd(){const d=cur;sigState(d).then(st=>{const box=$('#sigbox');if(!box
  box.innerHTML=roles(d).map(r=>{const s=d.sig[r.k],v=st[r.k];return '<div class="sigc"><div class="im">'+(s?'<img src="'+s.img+'" alt="">':'Belum ditandatangani')+'</div><div class="tx"><b>'+esc(r.l)+'</b><br>'+esc(r.n||'—')+' '+(r.req?'<span class="badge r">wajib</span>':'<span class="badge">opsional</span>')+(s?'<br><small>'+wib(s.time)+'</small><br>'+(v==='ok'?'<span class="badge g">✔ valid</span>':'<span class="badge r">✘ isi berubah, tanda tangan ulang</span>'):'')+
   '<div class="row" style="margin-top:8px">'+(d.locked?'':'<button class="btn s p" data-sign="'+r.k+'"'+(d.agreed?'':' disabled')+'>'+(s?'Tanda tangan ulang':'Tanda tangani')+'</button>'+(s?'<button class="btn s d" data-unsign="'+r.k+'">Hapus</button>':''))+'</div></div></div>'}).join('')});
  const fin=d.locked?'<div class="card"><div class="done"><div class="ck2">✓</div><h2>Dokumen final &amp; terkunci</h2><p class="sub">Ditandatangani lengkap pada '+wib(d.lock.time)+'.<br>Kode verifikasi: <b>'+esc(d.lock.hash.slice(0,16).toUpperCase())+'</b></p></div>'+
-  '<div class="row" style="justify-content:center"><button class="btn wa" data-act="wa">Kirim via WhatsApp</button>'+(d.stage==='booking'&&!d.nextId?'<button class="btn gold" data-act="cont">Lanjutkan transaksi →</button>':'')+'<button class="btn p" data-act="sharepdf">Bagikan PDF</button><button class="btn" data-act="gpdf">☁ Simpan ke Drive</button><button class="btn" data-act="share">Bagikan .html</button><button class="btn" data-act="print">Cetak / PDF</button><button class="btn" data-act="dlhtml">Unduh .html</button></div><div class="note i">WhatsApp otomatis mengirim ringkasan teks ke nomor konsumen. Untuk melampirkan berkas lengkap, pakai "Bagikan PDF" (di ponsel membuka menu bagikan) lalu pilih WhatsApp; di komputer berkas akan diunduh untuk dilampirkan manual.</div><div style="text-align:center;margin-top:12px"><button class="btn s d" data-act="unlock">Buka kunci</button></div></div>':
+  (d.docs==='both'?'<div class="note i" style="margin:0 0 8px">Pilih dokumen yang dikirim / dicetak:</div><div class="seg2" style="margin-bottom:12px"><button class="'+(outW(d)==='kw'?'on':'')+'" data-pv="kw">Kwitansi</button><button class="'+(outW(d)==='bast'?'on':'')+'" data-pv="bast">BAST</button><button class="'+(outW(d)==='both'?'on':'')+'" data-pv="both">Keduanya</button></div>':'')+'<div class="row" style="justify-content:center"><button class="btn wa" data-act="wa">Kirim via WhatsApp</button>'+(d.stage==='booking'&&!d.nextId?'<button class="btn gold" data-act="cont">Lanjutkan transaksi →</button>':'')+'<button class="btn p" data-act="sharepdf">Bagikan PDF</button><button class="btn" data-act="gpdf">☁ Simpan ke Drive</button><button class="btn" data-act="share">Bagikan .html</button><button class="btn" data-act="print">Cetak / PDF</button><button class="btn" data-act="dlhtml">Unduh .html</button></div><div class="note i">Tombol WhatsApp membuka menu bagikan dengan berkas PDF terlampir; pilih WhatsApp lalu kontaknya. Di komputer, PDF diunduh untuk dilampirkan manual.</div><div style="text-align:center;margin-top:12px"><button class="btn s d" data-act="unlock">Buka kunci</button></div></div>':
   '<div class="card"><h2>Setelah tanda tangan</h2><p class="sub">Dokumen terkunci otomatis begitu semua tanda tangan wajib lengkap. Setelah itu Anda dapat mengirimnya via WhatsApp.</p></div>';
  return (d.agreed?'':'<div class="note" style="margin:0 0 14px"><b>Belum disetujui.</b> Kembali ke langkah Preview dan centang persetujuan sebelum menandatangani.</div>')+'<div class="card"><h2>Tanda tangan digital</h2><p class="sub">Tanda tangan di layar dengan jari atau mouse. Satu tanda tangan berlaku untuk '+(d.docs==='both'?'Kwitansi dan BAST':d.docs==='kw'?'Kwitansi':'BAST')+'. Bila isi diubah sesudahnya, tanda tangan ditandai tidak valid.</p><div id="sigbox">…</div></div>'+fin}
 const pd={drawing:false,n:0,role:null};
@@ -586,15 +587,15 @@ async function applySign(){const c=$('#pad'),name=$('#sgn').value.trim();if(pd.n
  save();render()}
 
 /* ===== kirim ===== */
-async function waText(d){const h=(await contentHash(d)).slice(0,12).toUpperCase(),j=isJ(d),s=sisa(d);
- return ['*'+(d.docs==='both'?'KWITANSI & BAST':d.docs==='kw'?'KWITANSI':'BAST')+' '+typeLabel(d).toUpperCase()+' — '+d.us.name+'*','No: '+(d.docs==='bast'?d.noB:d.noK),'Kendaraan: '+d.veh.name+' ('+d.veh.plate+')','Harga: '+rp(d.pay.price),'Dibayar sekarang: '+rp(d.pay.now)+(s?' | Sisa: '+rp(s):' | LUNAS'),'Status: '+(d.locked?'FINAL, ditandatangani elektronik':'PREVIEW (belum ditandatangani)'),'Kode verifikasi: '+h,'','Dokumen lengkap saya kirim terpisah. Terima kasih.'].join('\n')}
-async function sendWA(who){if(cur.type==='perantara'&&!who&&cur.cp.phone&&cur.by.phone){const m=$('#modal');m.hidden=false;m.innerHTML='<div class="mb"><h2>Kirim WhatsApp ke siapa?</h2><div class="row" style="margin-top:12px"><button class="btn p" data-wa="cp">Penjual</button><button class="btn p" data-wa="by">Pembeli</button><button class="btn" data-act="padx">Batal</button></div></div>';return}
+async function waText(d,att){const h=(await contentHash(d)).slice(0,12).toUpperCase(),j=isJ(d),s=sisa(d);
+ const w=outW(d);return ['*'+(w==='both'?'KWITANSI & BAST':w==='kw'?'KWITANSI':'BAST')+' '+typeLabel(d).toUpperCase()+' — '+d.us.name+'*','No: '+(w==='bast'?d.noB:d.noK),'Kendaraan: '+d.veh.name+' ('+d.veh.plate+')','Harga: '+rp(d.pay.price),'Dibayar sekarang: '+rp(d.pay.now)+(s?' | Sisa: '+rp(s):' | LUNAS'),'Status: '+(d.locked?'FINAL, ditandatangani elektronik':'PREVIEW (belum ditandatangani)'),'Kode verifikasi: '+h,'',(att?'Dokumen PDF terlampir. Terima kasih.':'Dokumen lengkap saya kirim terpisah. Terima kasih.')].join('\n')}
+async function sendWAText(who){if(cur.type==='perantara'&&!who&&cur.cp.phone&&cur.by.phone){const m=$('#modal');m.hidden=false;m.innerHTML='<div class="mb"><h2>Kirim WhatsApp ke siapa?</h2><div class="row" style="margin-top:12px"><button class="btn p" data-wa="cp">Penjual</button><button class="btn p" data-wa="by">Pembeli</button><button class="btn" data-act="padx">Batal</button></div></div>';return}
  const t=await waText(cur),n=waNum(who?cur[who].phone:cur.type==='perantara'?(cur.by.phone||cur.cp.phone):cur.cp.phone),u='https://wa.me/'+n+'?text='+encodeURIComponent(t);if(!window.open(u,'_blank'))location.href=u}
-async function exportHtml(d){const body=await docsHtml(d);return '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(d.noK)+'</title><style>body{margin:0;padding:12px;background:#eee}.paper{margin-bottom:16px;border:1px solid #ccc;overflow-x:auto}'+PAPERCSS+'@media print{body{background:#fff;padding:0}.paper{border:0}}</style></head><body>'+body+'</body></html>'}
+async function exportHtml(d){const body=await docsHtml(d,outW(d));return '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(d.noK)+'</title><style>body{margin:0;padding:12px;background:#eee}.paper{margin-bottom:16px;border:1px solid #ccc;overflow-x:auto}'+PAPERCSS+'@media print{body{background:#fff;padding:0}.paper{border:0}}</style></head><body>'+body+'</body></html>'}
 async function shareFile(){const html=await exportHtml(cur),fn=(cur.docs==='bast'?cur.noB:cur.noK).replace(/\//g,'-')+'.html',f=new File([html],fn,{type:'text/html'});
  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:fn,text:await waText(cur)});return}catch(e){if(e&&e.name==='AbortError')return}}
  dl(f,fn);toast('Berkas diunduh. Lampirkan ke WhatsApp.')}
-async function doPrint(){$('#printRoot').innerHTML=await docsHtml(cur);setTimeout(()=>window.print(),120)}
+async function doPrint(){$('#printRoot').innerHTML=await docsHtml(cur,outW(cur));setTimeout(()=>window.print(),120)}
 
 const lateRate=d=>parseFloat(String((d.pay||{}).late||0).replace(',','.'))||0;
 function nikHit(path){const k=path.split('.')[0];if(k!=='cp'&&k!=='by')return;const t=cur[k];if(!/^\d{16}$/.test(t.nik||''))return;
@@ -684,16 +685,50 @@ function continueFrom(o){if(!o)return;if(!o.locked)return toast('Selesaikan tand
 /* ===== PDF & Google Drive ===== */
 const GSI='https://accounts.google.com/gsi/client',H2P='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
 function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('load'));document.head.appendChild(e)})}
-const fname=d=>(d.docs==='bast'?d.noB:d.noK).replace(/\//g,'-');
-async function makePdf(d){await loadScript(H2P);
+const fname=d=>(outW(d)==='bast'?d.noB:d.noK).replace(/\//g,'-');
+async function pdfNative(host){
+ const W=794,PH=1150,SC=Math.min(2,Math.max(1.4,window.devicePixelRatio||1.5));
+ const hr=host.getBoundingClientRect(),H=Math.ceil(host.scrollHeight);
+ const atomic=[...host.querySelectorAll('p,li,tr,.sg,.ver,h1,h2,h3,h4,img')].map(e=>{const r=e.getBoundingClientRect();return[r.top-hr.top,r.bottom-hr.top]}).filter(a=>a[1]-a[0]<PH*.9);
+ const ok=y=>!atomic.some(a=>y>a[0]+1&&y<a[1]-1);
+ const cs=new Set();host.querySelectorAll('*').forEach(e=>{const b=Math.round(e.getBoundingClientRect().bottom-hr.top);if(b>0&&b<H)cs.add(b)});const cl=[...cs].sort((a,b)=>a-b);
+ const forced=[...host.querySelectorAll('.paper')].slice(1).map(e=>Math.round(e.getBoundingClientRect().top-hr.top));
+ const cuts=[0];let y0=0;
+ while(y0<H-2){const lim=y0+PH;if(lim>=H){cuts.push(H);break}let best=null;const f=forced.find(v=>v>y0+20&&v<=lim);if(f!=null)best=f;else{for(const c of cl)if(c>y0+PH*.4&&c<=lim&&ok(c))best=c}if(best==null)best=lim;cuts.push(best);y0=best}
+ const vars=['ink','g1','g2','gold','gold2','bg','card','line','mu','ok','bad','warn','r'].map(n=>'--'+n+':'+getComputedStyle(document.documentElement).getPropertyValue('--'+n)).join(';');
+ const cl2=host.cloneNode(true);cl2.style.cssText='width:'+W+'px;background:#fff';const xml=new XMLSerializer().serializeToString(cl2);
+ const pages=[];let ink=false;
+ for(let k=0;k<cuts.length-1;k++){const a=cuts[k],h=Math.max(10,cuts[k+1]-a);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+h+'"><foreignObject x="0" y="0" width="'+W+'" height="'+h+'"><div xmlns="http://www.w3.org/1999/xhtml" style="width:'+W+'px;height:'+h+'px;overflow:hidden;position:relative;background:#fff;'+vars+'"><div style="position:absolute;left:0;top:'+(-a)+'px;width:'+W+'px">'+xml+'</div></div></foreignObject></svg>';
+  const img=new Image();img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);await img.decode();
+  const c=document.createElement('canvas');c.width=Math.round(W*SC);c.height=Math.round(h*SC);const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+  if(!ink){const d=g.getImageData(0,0,c.width,c.height).data;for(let q=0;q<d.length;q+=4*37){if(d[q]<235||d[q+1]<235||d[q+2]<235){ink=true;break}}}
+  pages.push({jpg:Uint8Array.from(atob(c.toDataURL('image/jpeg',.88).split(',')[1]),x=>x.charCodeAt(0)),cw:c.width,ch:c.height,h})}
+ if(!ink)throw new Error('kosong');
+ return mkPdf(pages,W)}
+function mkPdf(pages,W){const enc=x=>new TextEncoder().encode(x),parts=[],offs=[];let len=0;const push=b=>{parts.push(b);len+=b.length};
+ const A4w=595.28,A4h=841.89,m=28.35,dw=A4w-2*m,n=pages.length;
+ push(enc('%PDF-1.4\n'));const obj=(id,fn)=>{offs[id]=len;push(enc(id+' 0 obj\n'));fn();push(enc('\nendobj\n'))};
+ obj(1,()=>push(enc('<< /Type /Catalog /Pages 2 0 R >>')));
+ obj(2,()=>push(enc('<< /Type /Pages /Count '+n+' /Kids ['+pages.map((_,i)=>(3+3*i)+' 0 R').join(' ')+'] >>')));
+ pages.forEach((pg,i)=>{const P=3+3*i,C=P+1,I=P+2,dh=pg.h/W*dw,y=A4h-m-dh,ct='q '+dw.toFixed(2)+' 0 0 '+dh.toFixed(2)+' '+m+' '+y.toFixed(2)+' cm /Im0 Do Q';
+  obj(P,()=>push(enc('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+A4w+' '+A4h+'] /Contents '+C+' 0 R /Resources << /XObject << /Im0 '+I+' 0 R >> >> >>')));
+  obj(C,()=>push(enc('<< /Length '+ct.length+' >>\nstream\n'+ct+'\nendstream')));
+  obj(I,()=>{push(enc('<< /Type /XObject /Subtype /Image /Width '+pg.cw+' /Height '+pg.ch+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+pg.jpg.length+' >>\nstream\n'));push(pg.jpg);push(enc('\nendstream'))})});
+ const xr=len,tot=3+3*n;let x='xref\n0 '+tot+'\n0000000000 65535 f \n';for(let i=1;i<tot;i++)x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+ push(enc(x+'trailer\n<< /Size '+tot+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF'));return new Blob(parts,{type:'application/pdf'})}
+async function makePdf(d){const w=outW(d);
  const host=document.createElement('div');host.style.cssText='position:absolute;left:0;top:0;width:794px;background:#fff;z-index:-1;pointer-events:none';
- host.innerHTML='<style>'+PAPERCSS+'.paper{min-width:0;max-width:794px;margin:0 auto}</style>'+await docsHtml(d);document.body.appendChild(host);window.scrollTo(0,0);await new Promise(r=>setTimeout(r,350));
- try{return await html2pdf().set({margin:[10,10,10,10],image:{type:'jpeg',quality:.9},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0,windowWidth:794,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{mode:['css','legacy'],avoid:['.sg','.ver','tr']}}).from(host).outputPdf('blob')}finally{host.remove()}}
-async function sharePdf(){toast('Membuat PDF…');
+ host.innerHTML='<style>'+PAPERCSS+'.paper{min-width:0;max-width:794px;margin:0 auto}</style>'+await docsHtml(d,w);document.body.appendChild(host);window.scrollTo(0,0);await new Promise(r=>setTimeout(r,350));
+ try{try{return await pdfNative(host)}catch(e){console.warn('pdfNative',e)}
+  await loadScript(H2P);const H=host.scrollHeight||3000,sc=Math.max(.6,Math.min(2,Math.sqrt(12e6/(794*H)),15000/H));
+  const b=await html2pdf().set({margin:[10,10,10,10],image:{type:'jpeg',quality:.9},html2canvas:{scale:sc,useCORS:true,scrollX:0,scrollY:0,windowWidth:794,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{mode:['css','legacy'],avoid:['.sg','.ver','tr']}}).from(host).outputPdf('blob');
+  if(b.size<9000)throw new Error('PDF kosong');return b}finally{host.remove()}}
+async function sharePdf(wa){toast('Membuat PDF…');
  try{const blob=await makePdf(cur),fn=fname(cur)+'.pdf',f=new File([blob],fn,{type:'application/pdf'});
-  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:fn,text:await waText(cur)});return}catch(e){if(e&&e.name==='AbortError')return}}
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:fn,text:await waText(cur,true)});return}catch(e){if(e&&e.name==='AbortError')return}}
   dl(f,fn);toast('PDF diunduh. Lampirkan ke WhatsApp.')}
- catch(e){toast('PDF gagal dibuat (perlu internet). Memakai Cetak / PDF.');doPrint()}}
+ catch(e){if(wa){toast('PDF gagal dibuat. Mengirim ringkasan teks.');sendWAText()}else{toast('PDF gagal dibuat. Memakai Cetak / PDF.');doPrint()}}}
 const b64=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function aesKey(pw,salt,use){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,[use])}
@@ -711,7 +746,7 @@ async function gPdf(){toast('Membuat PDF & mengunggah…');try{const b=await mak
 
 /* ===== pengaturan ===== */
 function settings(){const p=S.pref;const f=(l,k,o)=>'<label class="f">'+l+'<input type="text" data-pf="'+k+'" value="'+esc(p[k]||'')+'"'+(o&&o.t?' inputmode="tel"':'')+(o&&o.ph?' placeholder="'+esc(o.ph)+'"':'')+'></label>';
- const m=$('#modal');m.hidden=false;m.innerHTML='<div class="mb" style="max-height:92vh;overflow:auto"><h2>Profil usaha &amp; pengaturan</h2><p class="sub" style="color:var(--mu);font-size:13px;margin:0 0 12px">Dipakai otomatis pada dokumen baru. Dokumen yang sudah dibuat tidak berubah.</p><h4>Logo</h4><div class="up"><div class="th">'+(p.logo?'<img src="'+p.logo+'" alt="">':'Logo')+'</div><div class="row" style="margin-top:2px"><label class="btn s">Pilih logo<input type="file" accept="image/*" hidden data-logo="1"></label>'+(p.logo?'<button class="btn s d" data-act="rmlogo">Hapus</button>':'')+'</div></div><div class="grid" style="grid-template-columns:1fr;margin-top:12px">'+f('Nama usaha','company')+f('Sebutan singkat (dipakai di klausul)','alias',{ph:'Mis. nama toko'})+f('Bentuk usaha (opsional)','legal',{ph:'CV / PT / UD / Perorangan'})+f('NIB / NPWP (opsional)','bid')+f('Kode nomor dokumen','code',{ph:'Mis. AMS'})+f('Alamat usaha','address')+f('Telepon','phone',{t:1})+f('Email (opsional)','email')+f('Slogan di kop (opsional)','tag')+f('Nama perwakilan (penanda tangan)','rep')+f('Jabatan','title')+f('Kota default','city')+f('Rekening default (opsional)','bank',{ph:'Bank, no. rekening, a.n.'})+'<label class="f">Klausul tetap usaha (satu per baris; jadi klausul tambahan di setiap dokumen baru, bisa dimatikan/diubah per dokumen)<textarea data-pf="perm" placeholder="Contoh: Garansi hanya berlaku bila disebut tertulis.">'+esc(p.perm||'')+'</textarea></label></div>'+bankHtml()+'<details class="rules"><summary>☁ Sinkron cloud (opsional)</summary><div class="grid" style="grid-template-columns:1fr;padding-bottom:10px">'+f('URL Apps Script (Web app)','syncUrl')+f('Kode akses (sama dengan di script)','syncToken')+'<label class="f">Kata sandi enkripsi cadangan<input type="password" data-pf="syncPass" value="'+esc(p.syncPass||'')+'" autocomplete="off"></label></div><div class="row" style="margin-bottom:10px"><button class="btn s" data-act="gsave">☁ Simpan ke cloud</button><button class="btn s" data-act="gload">☁ Ambil dari cloud</button></div><p style="color:var(--mu);font-size:12px;margin:0 0 12px">Data dienkripsi di perangkat sebelum dikirim. Catat kata sandi enkripsi: bila lupa, data cloud tidak bisa dibuka.</p></details><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn p" data-act="padx">Simpan</button></div></div>'}
+ const m=$('#modal');m.hidden=false;m.innerHTML='<div class="mb" style="max-height:92vh;overflow:auto"><h2>Profil usaha &amp; pengaturan <small style="font-size:11px;color:var(--mu);font-weight:400">v18</small></h2><p class="sub" style="color:var(--mu);font-size:13px;margin:0 0 12px">Dipakai otomatis pada dokumen baru. Dokumen yang sudah dibuat tidak berubah.</p><h4>Logo</h4><div class="up"><div class="th">'+(p.logo?'<img src="'+p.logo+'" alt="">':'Logo')+'</div><div class="row" style="margin-top:2px"><label class="btn s">Pilih logo<input type="file" accept="image/*" hidden data-logo="1"></label>'+(p.logo?'<button class="btn s d" data-act="rmlogo">Hapus</button>':'')+'</div></div><div class="grid" style="grid-template-columns:1fr;margin-top:12px">'+f('Nama usaha','company')+f('Sebutan singkat (dipakai di klausul)','alias',{ph:'Mis. nama toko'})+f('Bentuk usaha (opsional)','legal',{ph:'CV / PT / UD / Perorangan'})+f('NIB / NPWP (opsional)','bid')+f('Kode nomor dokumen','code',{ph:'Mis. AMS'})+f('Alamat usaha','address')+f('Telepon','phone',{t:1})+f('Email (opsional)','email')+f('Slogan di kop (opsional)','tag')+f('Nama perwakilan (penanda tangan)','rep')+f('Jabatan','title')+f('Kota default','city')+f('Rekening default (opsional)','bank',{ph:'Bank, no. rekening, a.n.'})+'<label class="f">Klausul tetap usaha (satu per baris; jadi klausul tambahan di setiap dokumen baru, bisa dimatikan/diubah per dokumen)<textarea data-pf="perm" placeholder="Contoh: Garansi hanya berlaku bila disebut tertulis.">'+esc(p.perm||'')+'</textarea></label></div>'+bankHtml()+'<details class="rules"><summary>☁ Sinkron cloud (opsional)</summary><div class="grid" style="grid-template-columns:1fr;padding-bottom:10px">'+f('URL Apps Script (Web app)','syncUrl')+f('Kode akses (sama dengan di script)','syncToken')+'<label class="f">Kata sandi enkripsi cadangan<input type="password" data-pf="syncPass" value="'+esc(p.syncPass||'')+'" autocomplete="off"></label></div><div class="row" style="margin-bottom:10px"><button class="btn s" data-act="gsave">☁ Simpan ke cloud</button><button class="btn s" data-act="gload">☁ Ambil dari cloud</button></div><p style="color:var(--mu);font-size:12px;margin:0 0 12px">Data dienkripsi di perangkat sebelum dikirim. Catat kata sandi enkripsi: bila lupa, data cloud tidak bisa dibuka.</p></details><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn p" data-act="padx">Simpan</button></div></div>'}
 function readLogo(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const r=Math.min(1,360/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*r);c.height=Math.round(im.height*r);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.9))};im.src=fr.result};fr.readAsDataURL(file)})}
 new MutationObserver(()=>{['#app','#modal','#toast'].forEach(q=>{const e=$(q);if(e&&e.innerHTML.indexOf('§A§')>=0){setAl(cur);e.innerHTML=X(e.innerHTML)}})}).observe(document.body,{childList:true,subtree:true});
 function kwHtml(d,ch,cls){setAl(d);if(!d.kv&&!d.locked&&d.stage!=='booking')d.kv=2;CLS={d,seen:{},cap:null,pre:d.stage==='booking'?'':'kw_'};return X(d.stage==='booking'?bkHtml0(d,ch,cls):kwHtml0(d,ch,cls))}
@@ -759,7 +794,7 @@ document.addEventListener('click',e=>{const t=e.target;let b;
  if(b=t.closest('[data-clreset]')){if(cur.cl&&cur.cl.ed)delete cur.cl.ed[b.dataset.clreset];markEdit();save();panel();return}
  if(b=t.closest('[data-ccdel]')){cur.cc.splice(+b.dataset.ccdel,1);markEdit();save();panel();return}
  if(b=t.closest('[data-bdel]')){const [r,id]=b.dataset.bdel.split(':');S.bank[r]=S.bank[r].filter(x=>x.id!==id);save();settings();return}
- if(b=t.closest('[data-wa]')){$('#modal').hidden=true;sendWA(b.dataset.wa);return}
+ if(b=t.closest('[data-wa]')){$('#modal').hidden=true;sendWAText(b.dataset.wa);return}
  if(b=t.closest('[data-dup]')){const o=S.docs.filter(d=>d.id===b.dataset.dup)[0],c=JSON.parse(JSON.stringify(o));S.seq++;const n=new Date(),q=String(S.seq).padStart(3,'0'),tp=({jual:'J',beli:'B',perantara:'P'})[o.type];c.id='D'+Date.now();c.noK=(o.stage==='booking'?'BK':'KW')+'/'+tp+'/'+(o.us.code||'AMS')+'/'+n.getFullYear()+'/'+pad(n.getMonth()+1)+'/'+q;c.noB='BAST/'+tp+'/'+(o.us.code||'AMS')+'/'+n.getFullYear()+'/'+pad(n.getMonth()+1)+'/'+q;c.created=n.toISOString();c.sig={};c.locked=false;c.lock=null;c.nextId=null;c.contTo=null;c.agreed=false;c.date=ymd(n);c.time=hm(n);S.docs.push(c);save();render();toast('Disalin sebagai draf baru');return}
  if(b=t.closest('[data-step]')){const s=b.dataset.step;if(s==='ttd'&&!cur.agreed&&!cur.locked)return toast('Setujui preview dulu sebelum tanda tangan');step=s;render();window.scrollTo(0,0);return}
  if(b=t.closest('[data-chip]')){if(cur.locked)return;let v=b.dataset.v;const p=b.dataset.chip;setP(cur,p,v);markEdit();save();if(p==='docs'&&v==='kw'&&step==='serah')step='bast';panel();if(p==='docs'){render()}return}
@@ -784,12 +819,12 @@ document.addEventListener('click',e=>{const t=e.target;let b;
  else if(a==='padok'){applySign()}
  else if(a==='unlock'){ask('Buka kunci dokumen? Tanda tangan akan ditandai tidak valid bila isi diubah.',()=>{cur.locked=false;cur.lock=null;cur.agreed=false;save();render()},'Buka kunci')}
  else if(a==='askok'){const f=askCb;askCb=null;$('#modal').hidden=true;if(f)f()}
- else if(a==='wa'){sendWA()}
+ else if(a==='wa'){sharePdf(true)}
  else if(a==='share'){shareFile()}
  else if(a==='print'){doPrint()}
  else if(a==='dlhtml'){exportHtml(cur).then(h=>dl(new Blob([h],{type:'text/html'}),(cur.docs==='bast'?cur.noB:cur.noK).replace(/\//g,'-')+'.html'))}
  else if(a==='settings'){settings()}
- else if(a==='sharepdf'){sharePdf()}
+ else if(a==='sharepdf'){sharePdf(false)}
  else if(a==='cont'){continueFrom(cur)}
  else if(a==='newbk'){const mo=$('#modal');mo.hidden=false;mo.innerHTML='<div class="mb"><h2>Booking / Panjer — §A§ sebagai?</h2><div class="pick">'+TYPES.filter(t=>!t.m).map(t=>'<button class="opt '+t.c+'" data-newbk="'+t.t+'"><div class="ic">'+t.ic+'</div><div class="tx"><h2>'+t.h+'</h2></div></button>').join('')+'</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" data-act="padx">Batal</button></div></div>'}
  else if(a==='gpdf'){gPdf()}
